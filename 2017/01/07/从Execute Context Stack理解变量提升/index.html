@@ -1,0 +1,81 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="喜欢打羽毛球的程序员, 很高兴来到我的世界"><title>从Execute Context Stack理解变量提升 | VTLDF</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/6.0.0/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.2/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.2/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">从Execute Context Stack理解变量提升</h1><a id="logo" href="/.">VTLDF</a><p class="description">喜欢打羽毛球的程序员</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">从Execute Context Stack理解变量提升</h1><div class="post-meta">Jan 7, 2017<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> 阅读</span></span></div><div class="post-content"><p>【原文链接】<a href="http://davidshariff.com/blog/what-is-the-execution-context-in-javascript/" target="_blank" rel="external">http://davidshariff.com/blog/what-is-the-execution-context-in-javascript/</a>   </p>
+<p>执行环境（execution context）是 JavaScript  中最为基础的部分。通过这篇文章，可以理解下面几点：  </p>
+<ul>
+<li>JavaScript 解释器是怎样解释执行代码的</li>
+<li>JavaScript 中为什么会有变量提升（hoist）  </li>
+</ul>
+<hr>
+<h2 id="执行环境"><a href="#执行环境" class="headerlink" title="执行环境"></a>执行环境</h2><p>JavaScript 中存在三种可执行的代码，分别是：  </p>
+<ul>
+<li>Global code<br>全局作用域的代码，不包括任何函数体内的代码</li>
+<li>Function code<br>函数内部的代码</li>
+<li>Eval code<br>在 eval() 函数内的代码</li>
+</ul>
+<p>解释器执行 JavaScript 代码时，就是进入了对应的执行环境。所以我们可以理解为 <strong>执行环境就是JavaScript代码执行时的环境或理解为作用域</strong>。下面的例子说明了两种不同的执行环境。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">// global context</div><div class="line">var sayHello = &apos;hello&apos;;</div><div class="line"></div><div class="line">function person() &#123;          // execution context</div><div class="line">    var first = &apos;David&apos;,</div><div class="line">        last = &apos;Shariff&apos;;</div><div class="line">        </div><div class="line">    function firstName() &#123;   // execution context </div><div class="line">        var hi = &apos;hi&apos;;</div><div class="line">        return first;</div><div class="line">    &#125;</div><div class="line">    </div><div class="line">    function lastName() &#123;   // execution context </div><div class="line">        return last;</div><div class="line">    &#125;</div><div class="line">    </div><div class="line">    console.log(sayHello + firstName() + &apos; &apos; + lastName());</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>上面的代码有 4 个执行环境：1 个全局执行环境(Global Execution Context)和 3 个函数执行环境(Function Execution Context)。在任何时候，全局执行环境都只有一个，其他的执行环境都可以访问其中的变量和函数。   </p>
+<p>当发生函数调用时，每个函数会创建一个新的 execution context。在嵌套函数定义中，内部函数的所有变量和函数不能被外部的函数访问，但外部函数的变量和函数能够被内部函数访问。如上面的例子，firstName() 定义在 person() 的内部，firstName能够访问 person() 中的变量 first，但是在 person() 中不能访问 first() 中的变量 hi。  为什么会发生上面的情况？跟 JavaScript 中的 execution context stack 有关。   </p>
+<hr>
+<h2 id="Execution-Context-Stack"><a href="#Execution-Context-Stack" class="headerlink" title="Execution Context Stack"></a>Execution Context Stack</h2><p>浏览器中的 JavaScript 解释器是单线程实现的，所有的动作都放在一个执行栈（Execution Stack）中按照后进先出的顺序执行。</p>
+<table>
+<thead>
+<tr>
+<th>Current Execution Context</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>…</td>
+<td></td>
+</tr>
+<tr>
+<td>funcA() (Execution Context 2)</td>
+<td></td>
+</tr>
+<tr>
+<td>funcB() (Execution Context 1)</td>
+<td></td>
+</tr>
+<tr>
+<td>Global Execution Context</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>当浏览器加载完一个script 代码后，会进入全局执行环境，如果在全局执行环境中调用了一个函数 funcA()，浏览器会为 funcA() 创建一个新的执行环境，并把它 push 到 Execution Context Stack 的栈顶。如果在 funcA() 中调用了 funcB(),会执行同样的操作。如果栈顶的函数执行完毕，浏览器会把栈顶对应的 Execution Context 弹出。直到最后栈底只剩下全局执行环境。在递归调用中，函数的执行过程也一样。</p>
+<p>总结一下，关于执行栈，我们需要记住下面几点：  </p>
+<ul>
+<li>单线程</li>
+<li>同步执行</li>
+<li>只有一个全局执行环境</li>
+<li>可以有无数个函数执行环境</li>
+<li>每当函数调用时，会创建一个新的执行环境，在递归调用中也是如此</li>
+</ul>
+<hr>
+<h2 id="执行环境到底发生了什么？"><a href="#执行环境到底发生了什么？" class="headerlink" title="执行环境到底发生了什么？"></a>执行环境到底发生了什么？</h2><p>在 JavaScript 解释器中，当调用一个函数时会创建一个执行环境，之后会分为两个阶段执行代码：  </p>
+<ol>
+<li>创建阶段（发生在函数调用后执行之前）  <ul>
+<li>创建作用域链（scope chain）</li>
+<li>创建变量、函数及参数</li>
+<li>设置 this 对象</li>
+</ul>
+</li>
+<li>代码执行阶段<ul>
+<li>为变量分配值，解释执行代码   </li>
+</ul>
+</li>
+</ol>
+<p>对于每个执行环境（execution context）可以通过一个对象来表示，这个对象有 3 个属性：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">executionContextObj = &#123;</div><div class="line">    &apos;scopeChain&apos;: &#123; /* 自己的变量 + 所有父执行环境中的变量 */ &#125;,</div><div class="line">    &apos;variableObject&apos;: &#123; /* 函数的参数，函数内部变量以及函数声明 */ &#125;,</div><div class="line">    &apos;this&apos;: &#123; /* this 对象 */ &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>创建阶段的主要的工作就是扫描函数参数、函数声明、变量声明，并且把扫描的结果保存在 executionContextObj 对象的 variableObject 属性中。下面的伪代码描述了创建阶段的具体工作：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line">1. 找到调用函数的代码</div><div class="line">2. 创建执行环境 execution context（其实就是创建一个对象）</div><div class="line">3. 进入创建阶段：</div><div class="line">    · 初始化作用域链（scope chain）</div><div class="line">    · 创建变量对象（variable object）：</div><div class="line">        - 处理函数参数，创建 arguments 对象</div><div class="line">        - 扫描函数声明：</div><div class="line">            * 每找到一个函数，会在 varibale object 对象中增加一个成员，属性名称是函数名，值是一个指针，指向内存中的函数地址</div><div class="line">            * 如果函数名称已经存在，前面的函数会被覆盖</div><div class="line">        - 扫描变量声明</div><div class="line">            * 每个变量会在 variable object 对象中创建一个属性，属性名称就是变量名，值被初始化为 undefined</div><div class="line">            * 如果变量名已经存在，则不做任何处理，继续扫描（注意，这里跟函数的处理方式不同）</div><div class="line">        - 在当前环境中，确定 this 的值（this的值是什么？？）</div><div class="line">4. 进入执行阶段，分配变量的值，解释执行代码</div></pre></td></tr></table></figure></p>
+<p>通过下面的例子，说明一下上面的执行过程：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">function foo(i) &#123;</div><div class="line">    var a = &apos;hello&apos;;</div><div class="line">    var b = function privateB() &#123;&#125;;   // 函数表达式</div><div class="line">    function c() &#123;&#125;                   // 函数声明</div><div class="line">&#125;</div><div class="line"></div><div class="line">foo(22);</div></pre></td></tr></table></figure></p>
+<p>当调用 foo(22) 的时候，在<strong>创建阶段</strong>，执行环境对象(<em>通过上面的描述执行环境就是一个对象，或者说通过一个对象表示，执行环境栈中进栈、出栈也是对对象的操作</em>) 会像下面的样子：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">fooExecutionContext = &#123;</div><div class="line">    scopeChain: &#123;...&#125;,</div><div class="line">    variableObject: &#123;</div><div class="line">        argumentes: &#123; 0: 22, length: 1 &#125;,</div><div class="line">        i: 22,</div><div class="line">        c: pointer to function c(),</div><div class="line">        a: undefined,     // 创建阶段变量的值为 undefined</div><div class="line">        b: undefined      // 创建阶段变量的值为 undefined</div><div class="line">    &#125;,</div><div class="line">    this: &#123;...&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>在创建阶段，除了arguments和显示声明的参数，以及通过函数声明的方式声明的函数之外，函数中的其他变量的值均为 undefined。进入<strong>执行阶段</strong>，对象会变下面的样子：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">fooExecutionContext = &#123;</div><div class="line">    scopeChain: &#123;...&#125;,</div><div class="line">    variableObject: &#123;</div><div class="line">        argumentes: &#123; 0: 22, length: 1 &#125;,</div><div class="line">        i: 22,</div><div class="line">        c: pointer to function c(),</div><div class="line">        a: &apos;hello&apos;, </div><div class="line">        b: pointer to function privateB()</div><div class="line">    &#125;,</div><div class="line">    this: &#123;...&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>通过上面的解释，现在对于 JavaScript 中的变量提升，应该有了比较清晰的理解，我们再来看下面的例子：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">(function () &#123;</div><div class="line">    console.log(typeof foo);        // 输出 function pointer</div><div class="line">    console.log(typeof bar);        // Undefined</div><div class="line">    </div><div class="line">    var foo = &apos;hello&apos;,</div><div class="line">        bar = function() &#123;</div><div class="line">            return &apos;world&apos;;</div><div class="line">        &#125;;</div><div class="line"></div><div class="line">    function foo() &#123;</div><div class="line">        return &apos;hello&apos;;</div><div class="line">    &#125;</div><div class="line">&#125;());</div></pre></td></tr></table></figure></p>
+<p>通过上面的例子，我们开回答下面三个问题：</p>
+<ul>
+<li><strong>为什么 foo 在声明之前就可以使用？</strong><br>因为在创建阶段，变量和函数声明已经被创建，之后才会进去执行阶段，所以可以访问 foo</li>
+<li><strong>foo 被声明了两次，为什么 foo 是一个函数引用，而不是 String 或 Undefined？</strong><br>我们只要在创建阶段，<strong>++函数的创建在变量创建之前++</strong>，在创建 var foo 的时候，如果变量名 foo 在 execution context 对象的 variableObject 属性中已经存在，就会被忽略，什么都不做</li>
+<li>为什么 bar 是 Undefined？<br>这个很好理解，bar 是一个普通变量，在创建阶段被chu’shi’hua初始化为 undefined</li>
+</ul>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>希望通过这篇文章，可以理解javascript 解释器在执行代码的时候究竟发生了什么。对执行环境（execution stack）和栈（stack）有了更好的理解。<br>下面是我个人的一些想法。对一个东西理解的目的是什么，我个人认为，理解的最终的目的除了能够更好的运用之外，还有一点非常重要，就是能够抓住重点，通过简单的表述表达清楚，下面我们就来简单表述一下什么是执行环境：<br><strong>执行环境就是一个对象，包含三个属性：作用于链，变量和函数，以及 this，执行环境栈操作的就是这个对象。</strong></p>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2017/01/07/从Execute Context Stack理解变量提升/" data-id="cj4v14ilp00047bxkdcehz2er" class="article-share-link">分享</a><div class="tags"><a href="/tags/JavaScript/">JavaScript</a></div><div class="post-nav"><a href="/2017/07/08/从构造函数说原型链继承/" class="pre">从构造函数说原型链继承</a><a href="/2016/11/26/exports与module-exports的区别/" class="next">exports与module.exports的区别</a></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/Node-js/" style="font-size: 15px;">Node.js</a> <a href="/tags/JavaScript/" style="font-size: 15px;">JavaScript</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最近文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/07/08/从构造函数说原型链继承/">从构造函数说原型链继承</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/01/07/从Execute Context Stack理解变量提升/">从Execute Context Stack理解变量提升</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/26/exports与module-exports的区别/">exports与module.exports的区别</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2017 <a href="/." rel="nofollow">VTLDF.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/3.0.47/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/3.0.47/jquery.fancybox.min.css"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
